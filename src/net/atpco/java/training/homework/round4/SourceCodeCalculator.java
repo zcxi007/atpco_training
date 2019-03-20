@@ -4,10 +4,19 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.regex.Pattern;
 
 public class SourceCodeCalculator {
+    private static String showMessage = "";
+    private static int totalRows;
+    private static int emptyRows;
+    private static int annotationRows;
+
     public static void main(String[] args) {
         WinFrame();
     }
@@ -15,10 +24,12 @@ public class SourceCodeCalculator {
     private static void WinFrame() {
         final JFrame winFrame = new JFrame("SourceCodeCalculator");
         final Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        final int frameWidth = 400;                         // 主窗口宽度
-        final int frameHeight = 500;                        // 主窗口高度
-        final int basicWidth = frameHeight / 20;            // 20
-        final int basicHeight = frameHeight / 20;           // 25
+        // 主窗口宽度
+        final int frameWidth = 400;
+        // 主窗口高度
+        final int frameHeight = 500;
+        final int basicWidth = frameHeight / 20;
+        final int basicHeight = frameHeight / 20;
         final JTextField filePath = new JTextField();
         final JButton fileChoose = new JButton("Select");
         final JButton fileCalculate = new JButton("Calculate");
@@ -27,10 +38,6 @@ public class SourceCodeCalculator {
         final JCheckBox JCB_CC = new JCheckBox(" C# ");
         final JCheckBox JCB_Python = new JCheckBox(" py ");
         final JTextArea calculateResult = new JTextArea();
-        final int totalRows;
-        final int emptyRows;
-        final int annotationRows;
-        final int codingRows;
 
         // 框体设置
         winFrame.setSize(frameWidth, frameHeight);
@@ -42,6 +49,7 @@ public class SourceCodeCalculator {
         // 界面元素设计
         filePath.setBounds(basicWidth, basicHeight, basicWidth * 5, basicHeight);
         filePath.setFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
+        filePath.setEditable(false);
 
         fileChoose.setBounds(basicWidth * 7, basicHeight, basicWidth * 3, basicHeight);
         fileChoose.setFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
@@ -63,8 +71,10 @@ public class SourceCodeCalculator {
 
         calculateResult.setBounds(basicWidth * 2, basicHeight * 5, basicWidth * 12, basicHeight * 13);
         calculateResult.setFont(new Font("Microsoft YaHei", Font.PLAIN, 18));
-        calculateResult.setEditable(false);         // 不可编辑
-        calculateResult.setLineWrap(true);          // 自动换行
+        // 不可编辑
+        calculateResult.setEditable(false);
+        // 自动换行
+        calculateResult.setLineWrap(true);
 
         winFrame.add(filePath);
         winFrame.add(fileChoose);
@@ -81,7 +91,7 @@ public class SourceCodeCalculator {
             @Override
             public void actionPerformed(ActionEvent e) {
                 JFileChooser jfc = new JFileChooser();
-                String showMessage = "";
+
                 jfc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
                 jfc.setMultiSelectionEnabled(true);
                 jfc.showDialog(new Label(), "Choose files");
@@ -100,7 +110,9 @@ public class SourceCodeCalculator {
                         String fileType = strArray[suffixIndex];
                         String[] fileTypes = {"java", "c", "cs", "py"};
                         if (Arrays.asList(fileTypes).contains(fileType)) {
-                            showMessage = showMessage + "文件 : " + file.getAbsolutePath();
+                            filePath.setText(file.getAbsolutePath());
+//                            showMessage = "File: " + file.getAbsolutePath() + "\r\n";
+                            readFileByLines(file);
                             calculateResult.setText(showMessage);
                         } else {
                             JOptionPane.showMessageDialog(null, "该文件不是Java、C、C#、Python的代码文件，请重新选择", " 警 告 ： ", JOptionPane.WARNING_MESSAGE);
@@ -109,5 +121,49 @@ public class SourceCodeCalculator {
                 }
             }
         });
+    }
+
+    /**
+     * 以行为单位读取文件
+     */
+    private static void readFileByLines(File file) {
+        try {
+            int codingRows;
+            int sysRows = 0;
+            BufferedReader reader = new BufferedReader(new FileReader(file.getAbsolutePath()));
+            String lineContents;
+            while ((lineContents = reader.readLine()) != null) {
+                // 获取系统行数
+                if (lineContents.contains("import") || lineContents.contains("package")) {
+                    sysRows++;
+                }
+
+                // 获取空行数
+                if (lineContents.isEmpty()) {
+                    emptyRows++;
+                }
+
+                // 获取注释行数
+                if (lineContents.contains("//") || lineContents.contains("/*") || lineContents.contains("*/") || Pattern.matches("(^\\*).*?", lineContents.trim())) {
+                    annotationRows++;
+                }
+
+                // 获取所有的行数
+                totalRows++;
+            }
+            sysRows = sysRows - 1;
+            codingRows = totalRows - annotationRows - emptyRows - sysRows;
+            System.out.println(sysRows);
+            System.out.println(emptyRows);
+            System.out.println(codingRows);
+            System.out.println(annotationRows);
+            System.out.println(totalRows);
+            showMessage = showMessage + "文件总行数： " + totalRows + "\r\n";
+            showMessage = showMessage + "文件空行数： " + emptyRows + "\r\n";
+            showMessage = showMessage + "注释行数： " + annotationRows + "\r\n";
+            showMessage = showMessage + "代码行数： " + codingRows;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
